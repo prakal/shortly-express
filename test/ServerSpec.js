@@ -94,6 +94,7 @@ describe('', function() {
       };
 
       requestWithSession(options, function(error, res, body) {
+        console.log('shorten urls test: ' + res.statusCode);
         // res comes from the request module, and may not follow express conventions
         expect(res.statusCode).to.equal(404);
         done();
@@ -136,12 +137,13 @@ describe('', function() {
       it('Fetches the link url title', function (done) {
         requestWithSession(options, function(error, res, body) {
           db.knex('urls')
-            .where('title', '=', 'Rofl Zoo - Daily funny animal pictures')
+            .where('title', '=', 'Funny pictures of animals, funny dog pictures')
             .then(function(urls) {
+              console.log('urls inside',urls);
               if (urls['0'] && urls['0']['title']) {
                 var foundTitle = urls['0']['title'];
               }
-              expect(foundTitle).to.equal('Rofl Zoo - Daily funny animal pictures');
+              expect(foundTitle).to.equal('Funny pictures of animals, funny dog pictures');
               done();
             });
         });

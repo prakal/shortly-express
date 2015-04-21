@@ -10,6 +10,7 @@ var User = require('./app/models/user');
 var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
+var crypto = require('crypto');
 
 var app = express();
 
@@ -25,7 +26,13 @@ app.use(express.static(__dirname + '/public'));
 
 app.get('/',
 function(req, res) {
-  res.render('index');
+  // check the session whether the user is signed in
+    // if the user is signed in,
+      // show index.html
+    // else
+      // render login page
+
+  res.render('login');
 });
 
 app.get('/create',
@@ -80,6 +87,26 @@ function(req, res) {
 /************************************************************/
 
 
+app.post('/signup', function(req, res) {
+  console.log('username: ', req.body.username, 'password: ', req.body.password);
+  new User({ username: req.body.username }).fetch().then(function(found) {
+    if (found) {
+      // console.log('our request is',req);
+      // user is found in DB. Prompt to provide a different username.
+      res.redirect(302, "http://" + req.headers.host + req.url);
+    } else {
+      var user = new User({
+        username: req.body.username,
+        password: req.body.password,
+      });
+
+      user.save().then(function(newUser) {
+        Users.add(newUser);
+        res.send(200, newUser);
+      });
+    }
+  });
+});
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail

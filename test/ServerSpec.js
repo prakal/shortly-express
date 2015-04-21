@@ -79,6 +79,7 @@ describe('', function() {
         };
         // login via form and save session info
         requestWithSession(options, function(error, res, body) {
+          console.log('response to login',res);
           done();
         });
       });

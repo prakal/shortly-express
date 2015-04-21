@@ -27,6 +27,21 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
+var checkUser = function(req, res, callback) {
+  if (req.session.cookie.maxAge > 0) {
+    // render links
+    console.log('get links: our cookie age is alright');
+    callback(req, res);
+    // Links.reset().fetch().then(function(links) {
+    //   res.send(200, links.models);
+    // });
+  } else {
+    // if cookie is invalid,
+    // then redirect
+    res.redirect(302, "http://" + req.headers.host + "/login");
+  }
+};
+
 
 app.get('/', function(req, res) {
   // check the session whether the user is signed in
@@ -36,15 +51,9 @@ app.get('/', function(req, res) {
       // render login page
     console.log("/ session", req.session);
     console.log("/ session maxAge: ", req.session.cookie.maxAge);
-    if (req.session.cookie.maxAge > 0) {
-      // render index
+    checkUser(req, res, function(req, res) {
       res.render('index');
-    } else {
-      // if cookie is invalid,
-      // then redirect
-      res.redirect(302, "http://" + req.headers.host + "/login");
-    }
-  // res.redirect(302, "http://" + req.headers.host + "/login");
+    });
 });
 
 
@@ -58,18 +67,11 @@ app.get('/links',
 function(req, res) {
   console.log("links session", req.session);
   console.log("links session maxAge: ", req.session.cookie.maxAge);
-  if (req.session.cookie.maxAge > 0) {
-    // render links
-    console.log('get links: our cookie age is alright');
+  checkUser(req, res, function(req, res) {
     Links.reset().fetch().then(function(links) {
       res.send(200, links.models);
     });
-  } else {
-    // if cookie is invalid,
-    // then redirect
-    res.redirect(302, "http://" + req.headers.host + "/login");
-
-  }
+  });
 });
 
 app.post('/links',
@@ -77,33 +79,35 @@ function(req, res) {
   var uri = req.body.url;
   console.log('req.body',req.body,' typeof req.body', typeof req.body);
   console.log('post to /links, uri, isValidUrl:', uri, util.isValidUrl(uri));
-  if (!util.isValidUrl(uri)) {
-    console.log('Not a valid url: ', uri);
-    return res.send(404);
-  }
-
-  new Link({ url: uri }).fetch().then(function(found) {
-    if (found) {
-      res.send(200, found.attributes);
-    } else {
-      util.getUrlTitle(uri, function(err, title) {
-        if (err) {
-          console.log('Error reading URL heading: ', err);
-          return res.send(404);
-        }
-
-        var link = new Link({
-          url: uri,
-          title: title,
-          base_url: req.headers.origin
-        });
-
-        link.save().then(function(newLink) {
-          Links.add(newLink);
-          res.send(200, newLink);
-        });
-      });
+  checkUser(req, res, function(req, res) {
+    if (!util.isValidUrl(uri)) {
+      console.log('Not a valid url: ', uri);
+      return res.send(404);
     }
+
+    new Link({ url: uri }).fetch().then(function(found) {
+      if (found) {
+        res.send(200, found.attributes);
+      } else {
+        util.getUrlTitle(uri, function(err, title) {
+          if (err) {
+            console.log('Error reading URL heading: ', err);
+            return res.send(404);
+          }
+
+          var link = new Link({
+            url: uri,
+            title: title,
+            base_url: req.headers.origin
+          });
+
+          link.save().then(function(newLink) {
+            Links.add(newLink);
+            res.send(200, newLink);
+          });
+        });
+      }
+    });
   });
 });
 

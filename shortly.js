@@ -24,27 +24,31 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
 
-app.get('/',
-function(req, res) {
+app.get('/', function(req, res) {
   // check the session whether the user is signed in
     // if the user is signed in,
       // show index.html
     // else
       // render login page
 
-  res.render('login');
+  res.redirect(302, "http://" + req.headers.host + "/login");
 });
+
 
 app.get('/create',
 function(req, res) {
-  res.render('index');
+  res.redirect(302, "http://" + req.headers.host + "/login");
+  //res.render('index');
 });
 
 app.get('/links',
 function(req, res) {
-  Links.reset().fetch().then(function(links) {
-    res.send(200, links.models);
-  });
+  console.log("links cookie", req.headers);
+
+  res.redirect(302, "http://" + req.headers.host + "/login");
+   // Links.reset().fetch().then(function(links) {
+  //   res.send(200, links.models);
+  // });
 });
 
 app.post('/links',
@@ -87,6 +91,31 @@ function(req, res) {
 /************************************************************/
 
 
+app.get('/login', function(req, res) {
+  res.render('login');
+});
+
+app.post('/login', function(req, res) {
+  console.log('username: ', req.body.username, 'password: ', req.body.password);
+  var qb = Users.query();
+  qb.where({username: req.body.username}).select().then(function(resp) {
+    console.log('login response: ', resp);
+    Users.resetQuery();
+    if (resp[0].password === req.body.password) {
+      res.cookie("mycookieKey", "mycookieValue", {maxAge: 900000});
+      console.log('login cookie', res.headers);
+      res.redirect(302, "/links");
+    } else {
+      res.redirect(302, "/login");
+    }
+  });
+})
+
+app.get('/signup', function(req, res) {
+  res.render('signup');
+});
+
+
 app.post('/signup', function(req, res) {
   console.log('username: ', req.body.username, 'password: ', req.body.password);
   new User({ username: req.body.username }).fetch().then(function(found) {
@@ -102,7 +131,7 @@ app.post('/signup', function(req, res) {
 
       user.save().then(function(newUser) {
         Users.add(newUser);
-        res.send(200, newUser);
+        res.redirect(302, '/');
       });
     }
   });

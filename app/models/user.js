@@ -5,7 +5,7 @@ var Promise = require('bluebird');
 var User = db.Model.extend({
   tableName: 'users',
   initialize: function(){
-    this.on('creating', this.hashPassword);
+    // this.on('creating', this.hashPassword);
   },
 
   hashPassword: function(password,callback){

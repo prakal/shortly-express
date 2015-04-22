@@ -27,7 +27,10 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
+var activeUsers = {};
+
 var checkUser = function(req, res, callback) {
+  console.log('SESSION AFTER DESTROY', req.session);
   if (req.session.cookie.maxAge > 0) {
     // render links
     console.log('get links: our cookie age is alright');
@@ -116,6 +119,7 @@ function(req, res) {
 /************************************************************/
 
 app.get('/logout', function(req, res) {
+
   req.session.destroy(function(){
     res.redirect(302, '/login');
   });
@@ -132,15 +136,21 @@ app.post('/login', function(req, res) {
   qb.where({username: req.body.username}).select().then(function(resp) {
     console.log('login response: ', resp);
     Users.resetQuery();
-    if (resp.length > 0 && resp[0].password === req.body.password) {
-      req.session.regenerate(function(){
-        req.session.user = req.body.username;
-        req.session.cookie.maxAge = 15*60*1000;
-        res.redirect('/');
-        });
-    } else {
-      res.redirect(302, "/login");
-    }
+    var passwordChecker = function(isValidPassword){
+      if (isValidPassword === true){
+        req.session.regenerate(function(){
+          req.session.user = req.body.username;
+          req.session.cookie.maxAge = 15*60*1000;
+          activeUsers[req.body.username] = req.session;
+          res.redirect('/');
+          });
+      }
+      else {
+        res.redirect(302, "/login");
+      }
+    };
+    var password = (resp.length > 0) ? resp[0].password : undefined;
+    user.comparePassword(password,passwordChecker);
   });
 })
 
@@ -159,13 +169,15 @@ app.post('/signup', function(req, res) {
     } else {
       var user = new User({
         username: req.body.username,
-        password: req.body.password,
       });
 
-      user.save().then(function(newUser) {
-        Users.add(newUser);
-        res.redirect(302, '/');
+      user.hashPassword(req.body.password, function(){
+        user.save().then(function(newUser) {
+          Users.add(newUser);
+          res.redirect(302, '/');
+        });
       });
+
     }
   });
 });
